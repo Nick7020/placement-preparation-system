@@ -1,22 +1,24 @@
+const express = require("express");
 const cors = require("cors");
+
 const authMiddleware = require("./middleware/authMiddleware");
 const adminMiddleware = require("./middleware/adminMiddleware");
+
 const TestResult = require("./models/TestResult");
 const Question = require("./models/Question");
+
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const express = require("express");
-
-app.use(cors());         
-app.use(express.json());
 
 const mongoose = require("mongoose");
 require("dotenv").config();
 
-const User = require("./models/User");
-
 const app = express();
+
+app.use(cors());         
 app.use(express.json());
+
+const User = require("./models/User");
 
 app.get("/",(req,res)=>{
     res.send("Server Running");
@@ -46,7 +48,7 @@ app.post("/create-user", async (req, res) => {
   }
 });
 
-app.post("/get", async (req, res) => {
+app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 

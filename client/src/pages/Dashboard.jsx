@@ -33,16 +33,22 @@ function Dashboard() {
   if (!user) return <h2>Loading...</h2>;
 
   return (
-    <div>
-      <h2>Dashboard 🚀</h2>
+  <div>
+    <h2>Dashboard 🚀</h2>
 
-      <h3>Welcome, {user.name} 👋</h3>
+    <h3>Welcome, {user.name} 👋</h3>
 
-      <button onClick={handleLogout}>
-        Logout
-      </button>
-    </div>
-  );
+    <button onClick={() => window.location.href="/test"}>
+      Start Test 🧠🔥
+    </button>
+
+    <br /><br />
+
+    <button onClick={handleLogout}>
+      Logout
+    </button>
+  </div>
+);
 }
 
 export default Dashboard;
