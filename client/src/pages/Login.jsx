@@ -17,6 +17,7 @@ function Login() {
       alert("Login Successful ✅");
 
       localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user",JSON.stringify(res.data.user));
       window.location.href = "/dashboard";
 
     } catch (error) {
@@ -48,6 +49,9 @@ function Login() {
 
       <button onClick={handleLogin}>
         Login
+      </button>
+      <button onClick={() => window.location.href = "/register"}>
+        Register
       </button>
     </div>
   );
