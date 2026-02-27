@@ -407,6 +407,21 @@ app.post("/start-test", authMiddleware, async (req, res) => {
 
 });
 
+app.get("/make-admin", async (req, res) => {
+
+  const user = await User.findOne({ email: "admin@gmail.com" });
+
+  if (!user) {
+    return res.json({ message: "User not found ❌" });
+  }
+
+  user.role = "admin";
+  await user.save();
+
+  res.json({ message: "User is now ADMIN ✅🔥" });
+
+});
+
 
 
 

@@ -1,54 +1,52 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Dashboard() {
-  const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const token = localStorage.getItem("token");
+  const navigate = useNavigate();
 
-        const res = await axios.get("http://localhost:5000/profile", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        setUser(res.data);
-
-      } catch (error) {
-        console.log(error);
-      }
-    };
-
-    fetchProfile();
-  }, []);
+  const user = JSON.parse(localStorage.getItem("user"));
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    window.location.reload();
+    localStorage.clear();
+    navigate("/");
   };
 
-  if (!user) return <h2>Loading...</h2>;
-
   return (
-  <div>
-    <h2>Dashboard 🚀</h2>
+    <div>
+      <h2>Dashboard 🚀</h2>
 
-    <h3>Welcome, {user.name} 👋</h3>
+      <h3>Welcome, {user.name}</h3>
 
-    <button onClick={() => window.location.href="/test"}>
-      Start Test 🧠🔥
-    </button>
+      <button onClick={() => navigate("/test")}>
+        Start Test 🧠
+      </button>
 
-    <br /><br />
+      <button onClick={() => navigate("/history")}>
+        History 📊
+      </button>
 
-    <button onClick={handleLogout}>
-      Logout
-    </button>
-  </div>
-);
+      <button onClick={() => navigate("/analytics")}>
+        Analytics 📈
+      </button>
+
+      <button onClick={() => navigate("/leaderboard")}>
+        Leaderboard 🏆
+      </button>
+
+      {/* 🔥 ADMIN ONLY BUTTON */}
+      {user.role === "admin" && (
+        <button onClick={() => navigate("/admin")}>
+          Admin Panel 🛠️
+        </button>
+      )}
+
+      <br /><br />
+
+      <button onClick={handleLogout}>
+        Logout 🚪
+      </button>
+    </div>
+  );
 }
 
 export default Dashboard;

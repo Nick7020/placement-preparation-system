@@ -1,21 +1,81 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Test from "./pages/Test";
 import Result from "./pages/Result";
 import Register from "./pages/Register";
 
+import ProtectedRoute from "./components/ProtectedRoute";
+import History from "./pages/History";
+import Analytics from "./pages/Analytics";
+import Leaderboard from "./pages/Leaderboard";
+
+import Admin from "./pages/Admin";
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
 
-        <Route path="/test" element={<Test />} />
-        <Route path="/result" element={<Result />} />
+        {/* Public Routes */}
+        <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        </Routes>
+
+        {/* Protected Routes */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/test" 
+          element={
+            <ProtectedRoute>
+              <Test />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/result" 
+          element={
+            <ProtectedRoute>
+              <Result />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/history" 
+          element={
+            <ProtectedRoute>
+              <History />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/analytics" 
+          element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/leaderboard" 
+          element={
+            <ProtectedRoute>
+              <Leaderboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="/admin" element={<Admin />} />
+      </Routes>
     </BrowserRouter>
   );
 }
