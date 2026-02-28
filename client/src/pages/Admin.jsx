@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 
 function Admin() {
 
+  const navigate = useNavigate();   // ✅ ADD THIS
+
   const [questions, setQuestions] = useState([]);
 
   useEffect(() => {
@@ -18,52 +20,62 @@ function Admin() {
       console.log(error);
     }
   };
+
   const handleDelete = async (id) => {
-  try {
+    try {
 
-    const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token");
 
-    await axios.delete(`http://localhost:5000/delete-question/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+      await axios.delete(`http://localhost:5000/delete-question/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
 
-    alert("Question Deleted ✅");
+      alert("Question Deleted ✅");
 
-    // Refresh list
-    fetchQuestions();
+      fetchQuestions();
 
-  } catch (error) {
-    console.log(error);
-    alert("Delete Failed ❌");
-  }
-};
+    } catch (error) {
+      console.log(error);
+      alert("Delete Failed ❌");
+    }
+  };
 
   return (
-  <div>
-    <h2>Admin Panel 🛠️</h2>
+    <div>
+      <h2>Admin Panel 🛠️</h2>
 
-    {questions.map((q) => (
-      <div
-        key={q._id}
-        style={{ border: "1px solid gray", margin: "10px", padding: "10px" }}
-      >
-        <h4>{q.question}</h4>
-        <p>Category: {q.category}</p>
-        <p>Difficulty: {q.difficulty}</p>
-
-        <button
-          style={{ backgroundColor: "red", color: "white" }}
-          onClick={() => handleDelete(q._id)}
+      {questions.map((q) => (
+        <div
+          key={q._id}
+          style={{ border: "1px solid gray", margin: "10px", padding: "10px" }}
         >
-          Delete 🗑
-        </button>
-      </div>
-    ))}
+          <h4>{q.question}</h4>
+          <p>Category: {q.category}</p>
+          <p>Difficulty: {q.difficulty}</p>
 
-  </div>
-);
+          {/* ✅ EDIT BUTTON */}
+          <button
+            style={{ backgroundColor: "blue", color: "white", marginRight: "10px" }}
+            onClick={() => navigate(`/edit-question/${q._id}`)}
+          >
+            Edit ✏️
+          </button>
+
+          {/* ✅ DELETE BUTTON */}
+          <button
+            style={{ backgroundColor: "red", color: "white" }}
+            onClick={() => handleDelete(q._id)}
+          >
+            Delete 🗑
+          </button>
+
+        </div>
+      ))}
+
+    </div>
+  );
 }
 
 export default Admin;
