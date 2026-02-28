@@ -31,7 +31,7 @@ function Register() {
 
   return (
     <div>
-      <h2>Register 📝</h2>
+      <h2>Register</h2>
 
       <input
         type="text"
@@ -61,7 +61,10 @@ function Register() {
       <br /><br />
 
       <button onClick={handleRegister}>
-        Register ✅
+        Register
+      </button>
+      <button onClick={() => window.location.href = "/"}>
+        Login
       </button>
     </div>
   );
