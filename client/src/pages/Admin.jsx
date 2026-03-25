@@ -22,7 +22,7 @@ function Admin() {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/settings");
+      const res = await axios.get("https://server-production.up.railway.app/settings");
       setSettings(res.data);
       setDurationMinutes(Math.round(res.data.testDuration / 60));
     } catch (error) {
@@ -34,7 +34,7 @@ function Admin() {
     try {
       const token = localStorage.getItem("token");
       const payload = { ...settings, testDuration: durationMinutes * 60 };
-      await axios.put("http://localhost:5000/settings", payload, {
+      await axios.put("https://server-production.up.railway.app/settings", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Settings Saved ✅");
@@ -45,7 +45,7 @@ function Admin() {
 
   const fetchQuestions = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/questions?page=1&limit=100");
+      const res = await axios.get("https://server-production.up.railway.app/questions?page=1&limit=100");
       setQuestions(res.data.data);
     } catch (error) {
       console.log(error);
@@ -61,7 +61,7 @@ function Admin() {
   const handleAddQuestion = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:5000/add-question", form, {
+      await axios.post("https://server-production.up.railway.app/add-question", form, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Question Added ✅🔥");
@@ -82,7 +82,7 @@ function Admin() {
     if (!confirm("Delete this question?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/delete-question/${id}`, {
+      await axios.delete(`https://server-production.up.railway.app/delete-question/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Question Deleted ✅");
