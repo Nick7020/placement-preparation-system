@@ -10,7 +10,7 @@ function Analytics() {
     const fetchAnalytics = async () => {
       try {
         const user = JSON.parse(localStorage.getItem("user"));
-        const res = await axios.get(`https://server-production.up.railway.app/analytics/${user._id}`);
+        const res = await axios.get(`https://server-production-0086.up.railway.app/analytics/${user._id}`);
         setData(res.data);
       } catch (error) {
         console.log(error);

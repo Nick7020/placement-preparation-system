@@ -23,7 +23,7 @@ function Test() {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get("https://server-production.up.railway.app/settings");
+      const res = await axios.get("https://server-production-0086.up.railway.app/settings");
       setTimeLeft(res.data.testDuration);
       setDuration(res.data.testDuration);
       fetchQuestions(res.data.questionCount);
@@ -35,8 +35,8 @@ function Test() {
   const fetchQuestions = async (count = 5) => {
     try {
       const url = category
-        ? `https://server-production.up.railway.app/random-questions?count=${count}&category=${category}`
-        : `https://server-production.up.railway.app/random-questions?count=${count}`;
+        ? `https://server-production-0086.up.railway.app/random-questions?count=${count}&category=${category}`
+        : `https://server-production-0086.up.railway.app/random-questions?count=${count}`;
       const res = await axios.get(url);
       setQuestions(res.data);
     } catch (error) {
@@ -75,7 +75,7 @@ function Test() {
     setIsSubmitted(true);
     try {
       const user = JSON.parse(localStorage.getItem("user"));
-      const res = await axios.post("https://server-production.up.railway.app/submit-test", {
+      const res = await axios.post("https://server-production-0086.up.railway.app/submit-test", {
         userId: user._id,
         answers,
         startedAt: new Date()

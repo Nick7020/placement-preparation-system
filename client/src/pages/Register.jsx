@@ -10,7 +10,7 @@ function Register() {
 
   const handleRegister = async () => {
     try {
-      await axios.post("https://server-production.up.railway.app/create-user", { name, email, password });
+      await axios.post("https://server-production-0086.up.railway.app/create-user", { name, email, password });
       alert("Registration Successful ✅");
       navigate("/");
     } catch (error) {

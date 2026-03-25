@@ -17,7 +17,7 @@ function EditQuestion() {
   useEffect(() => {
     const fetchQuestion = async () => {
       try {
-        const res = await axios.get(`https://server-production.up.railway.app/questions?page=1&limit=100`);
+        const res = await axios.get(`https://server-production-0086.up.railway.app/questions?page=1&limit=100`);
         const found = res.data.data.find((q) => q._id === id);
         if (found) {
           setForm({
@@ -44,7 +44,7 @@ function EditQuestion() {
   const handleSubmit = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`https://server-production.up.railway.app/update-question/${id}`, form, {
+      await axios.put(`https://server-production-0086.up.railway.app/update-question/${id}`, form, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("Question Updated ✅");

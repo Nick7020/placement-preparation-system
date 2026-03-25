@@ -10,7 +10,7 @@ function History() {
     const fetchHistory = async () => {
       try {
         const user = JSON.parse(localStorage.getItem("user"));
-        const res = await axios.get(`https://server-production.up.railway.app/my-history/${user._id}`);
+        const res = await axios.get(`https://server-production-0086.up.railway.app/my-history/${user._id}`);
         setHistory(res.data);
       } catch (error) {
         console.log(error);
