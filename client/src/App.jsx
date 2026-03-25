@@ -12,6 +12,8 @@ import Analytics from "./pages/Analytics";
 import Leaderboard from "./pages/Leaderboard";
 
 import Admin from "./pages/Admin";
+import EditQuestion from "./pages/EditQuestion";
+import AdminRoute from "./components/AdminRoute";
 
 function App() {
   return (
@@ -74,7 +76,9 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/edit-question/:id" element={<AdminRoute><EditQuestion /></AdminRoute>} />
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+      
       </Routes>
     </BrowserRouter>
   );

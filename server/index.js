@@ -6,6 +6,7 @@ const adminMiddleware = require("./middleware/adminMiddleware");
 
 const TestResult = require("./models/TestResult");
 const Question = require("./models/Question");
+const Setting = require("./models/Setting");
 
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
@@ -199,7 +200,8 @@ app.post("/submit-test", async (req, res) => {
 
     const timeTaken = Math.floor((submittedAt - start) / 1000);
 
-    const TEST_DURATION = 60;   // ⏱️ 60 sec demo
+    const settingData = await Setting.findOne();
+    const TEST_DURATION = settingData ? settingData.testDuration : 60;
 
     if (timeTaken > TEST_DURATION) {
       return res.status(400).json({
@@ -399,12 +401,34 @@ app.delete("/delete-question/:id", authMiddleware, adminMiddleware, async (req, 
 });
 
 app.post("/start-test", authMiddleware, async (req, res) => {
-
   res.json({
     message: "Test Started ✅",
     startedAt: new Date()
   });
+});
 
+app.get("/settings", async (req, res) => {
+  try {
+    let setting = await Setting.findOne();
+    if (!setting) setting = await Setting.create({});
+    res.json(setting);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/settings", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { testDuration, questionCount } = req.body;
+    let setting = await Setting.findOne();
+    if (!setting) setting = await Setting.create({});
+    setting.testDuration = testDuration;
+    setting.questionCount = questionCount;
+    await setting.save();
+    res.json({ message: "Settings Updated ✅", setting });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get("/make-admin", async (req, res) => {

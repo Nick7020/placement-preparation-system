@@ -1,44 +1,85 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 function Leaderboard() {
-
   const [leaders, setLeaders] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/leaderboard");
+        setLeaders(res.data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
     fetchLeaderboard();
   }, []);
 
-  const fetchLeaderboard = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/leaderboard");
-      setLeaders(res.data);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  if (leaders.length === 0) return <h2>No Data Yet 🏆</h2>;
+  const medals = ["🥇", "🥈", "🥉"];
 
   return (
-    <div>
-      <h2>Leaderboard 🏆</h2>
+    <div className="min-h-screen bg-[#f0f4f8] flex flex-col">
 
-      {leaders.map((user, index) => (
-        <div 
-          key={index} 
-          style={{
-            border: "1px solid gray",
-            padding: "10px",
-            margin: "10px"
-          }}
-        >
-          <h3>Rank #{index + 1}</h3>
-          <p>User ID: {user._id}</p>
-          <p>Tests Given: {user.testsGiven}</p>
-          <p>Average Accuracy: {user.averageAccuracy.toFixed(2)}%</p>
+      {/* Header */}
+      <div className="bg-[#1a3c6e] text-white px-6 py-3 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+            <span className="text-[#1a3c6e] font-bold text-sm">P</span>
+          </div>
+          <span className="font-semibold tracking-wide">Placement Preparation System</span>
         </div>
-      ))}
+        <button onClick={() => navigate("/dashboard")} className="text-sm text-blue-200 hover:text-white">
+          ← Back to Dashboard
+        </button>
+      </div>
+
+      <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
+
+        <div className="bg-white border-l-4 border-[#1a3c6e] rounded-lg p-5 mb-6 shadow-sm">
+          <h2 className="text-xl font-bold text-[#1a3c6e]">Leaderboard</h2>
+          <p className="text-gray-500 text-sm mt-1">Top 10 performers ranked by average accuracy</p>
+        </div>
+
+        {leaders.length === 0 ? (
+          <div className="bg-white border border-gray-200 rounded-lg p-10 text-center shadow-sm">
+            <p className="text-gray-400 text-lg">No data available yet 🏆</p>
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-[#1a3c6e] text-white">
+                <tr>
+                  <th className="px-5 py-3 text-left font-semibold">Rank</th>
+                  <th className="px-5 py-3 text-left font-semibold">Candidate</th>
+                  <th className="px-5 py-3 text-left font-semibold">Tests Given</th>
+                  <th className="px-5 py-3 text-left font-semibold">Avg Accuracy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaders.map((user, index) => (
+                  <tr key={index} className={`border-t border-gray-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"} ${index < 3 ? "font-semibold" : ""}`}>
+                    <td className="px-5 py-3 text-lg">
+                      {medals[index] || `#${index + 1}`}
+                    </td>
+                    <td className="px-5 py-3 text-gray-700 text-xs">{user._id}</td>
+                    <td className="px-5 py-3 text-gray-700">{user.testsGiven}</td>
+                    <td className="px-5 py-3">
+                      <span className="text-[#1a3c6e] font-bold">{user.averageAccuracy.toFixed(2)}%</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="text-center text-xs text-gray-400 py-4">
+        © 2025 Placement Preparation System. All rights reserved.
+      </div>
 
     </div>
   );
