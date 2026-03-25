@@ -107,7 +107,7 @@ app.post("/add-question", authMiddleware, adminMiddleware, async (req, res) => {
     }
 
     // ✅ Enum safety
-    const validCategories = ["aptitude", "dsa", "technical", "mern"];
+    const validCategories = ["aptitude", "dsa", "technical", "mern", "reasoning"];
 
     if (!validCategories.includes(category)) {
       return res.status(400).json({ message: "Invalid category ❌" });
@@ -175,9 +175,12 @@ app.get("/questions", async (req, res) => {
 
 app.get("/random-questions", async (req, res) => {
   try {
-    const { count = 5 } = req.query;
+    const { count = 5, category } = req.query;
+
+    const filter = category ? { category } : {};
 
     const questions = await Question.aggregate([
+      { $match: filter },
       { $sample: { size: Number(count) } }
     ]);
 

@@ -44,7 +44,7 @@ function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
           <div
-            onClick={() => navigate("/test")}
+            onClick={() => navigate("/select-test")}
             className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md hover:border-[#1a3c6e] cursor-pointer transition-all"
           >
             <div className="text-3xl mb-3">🧠</div>

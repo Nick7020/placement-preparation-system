@@ -1,9 +1,11 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function Test() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const category = location.state?.category || null;
 
   const [questions, setQuestions] = useState([]);
   const [current, setCurrent] = useState(0);
@@ -32,7 +34,10 @@ function Test() {
 
   const fetchQuestions = async (count = 5) => {
     try {
-      const res = await axios.get(`http://localhost:5000/random-questions?count=${count}`);
+      const url = category
+        ? `http://localhost:5000/random-questions?count=${count}&category=${category}`
+        : `http://localhost:5000/random-questions?count=${count}`;
+      const res = await axios.get(url);
       setQuestions(res.data);
     } catch (error) {
       console.log(error);

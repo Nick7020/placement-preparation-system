@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import History from "./pages/History";
 import Analytics from "./pages/Analytics";
 import Leaderboard from "./pages/Leaderboard";
+import SelectTest from "./pages/SelectTest";
 
 import Admin from "./pages/Admin";
 import EditQuestion from "./pages/EditQuestion";
@@ -73,6 +74,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Leaderboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/select-test" 
+          element={
+            <ProtectedRoute>
+              <SelectTest />
             </ProtectedRoute>
           } 
         />
