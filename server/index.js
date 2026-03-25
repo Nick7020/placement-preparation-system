@@ -16,8 +16,7 @@ require("dotenv").config();
 
 const app = express();
 
-app.use(cors());
-app.options("*", cors());         
+app.use(cors());         
 app.use(express.json());
 
 const User = require("./models/User");
