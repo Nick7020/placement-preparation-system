@@ -31,8 +31,9 @@ app.use(express.json());
 
 const User = require("./models/User");
 
-app.get("/",(req,res)=>{
-    res.send("Server Running");
+app.get("/", (req, res) => {
+  console.log("Root endpoint hit");
+  res.send("Server Running");
 });
 
 app.post("/test",(req,res)=>{
@@ -344,13 +345,26 @@ app.get("/leaderboard", async (req, res) => {
         }
       },
       {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "userInfo"
+        }
+      },
+      {
+        $unwind: "$userInfo"
+      },
+      {
         $addFields: {
           averageAccuracy: {
             $multiply: [
               { $divide: ["$totalScore", "$totalQuestions"] },
               100
             ]
-          }
+          },
+          userName: "$userInfo.name",
+          userEmail: "$userInfo.email"
         }
       },
       {
@@ -358,12 +372,25 @@ app.get("/leaderboard", async (req, res) => {
       },
       {
         $limit: 10
+      },
+      {
+        $project: {
+          userId: "$_id",
+          userName: 1,
+          userEmail: 1,
+          totalScore: 1,
+          totalQuestions: 1,
+          testsGiven: 1,
+          averageAccuracy: 1,
+          _id: 0
+        }
       }
     ]);
 
-    res.json(leaderboard || []);
+    res.status(200).json(leaderboard);
 
   } catch (error) {
+    console.error("Leaderboard error:", error);
     res.status(200).json([]);
   }
 });
