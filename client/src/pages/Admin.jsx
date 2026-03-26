@@ -1,8 +1,6 @@
-import axios from "axios";
+import API from "../services/api";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const API = "https://server-production-0086.up.railway.app";
 
 function Admin() {
   const navigate = useNavigate();
@@ -18,7 +16,7 @@ function Admin() {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get(`${API}/settings`);
+      const res = await API.get("/settings");
       setSettings(res.data);
       setDurationMinutes(Math.round(res.data.testDuration / 60));
     } catch (error) { console.log(error); }
@@ -26,22 +24,21 @@ function Admin() {
 
   const fetchPapers = async () => {
     try {
-      const res = await axios.get(`${API}/exam-papers`);
+      const res = await API.get("/exam-papers");
       setPapers(res.data);
     } catch (error) { console.log(error); }
   };
 
   const fetchQuestions = async () => {
     try {
-      const res = await axios.get(`${API}/questions?page=1&limit=100`);
+      const res = await API.get("/questions?page=1&limit=100");
       setQuestions(res.data.data);
     } catch (error) { console.log(error); }
   };
 
   const handleSaveSettings = async () => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.put(`${API}/settings`, { ...settings, testDuration: durationMinutes * 60 }, { headers: { Authorization: `Bearer ${token}` } });
+      await API.put("/settings", { ...settings, testDuration: durationMinutes * 60 });
       alert("Settings Saved ✅");
     } catch (error) { alert("Failed ❌"); }
   };
@@ -54,8 +51,7 @@ function Admin() {
 
   const handleAddQuestion = async () => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(`${API}/add-question`, form, { headers: { Authorization: `Bearer ${token}` } });
+      await API.post("/add-question", form);
       alert("Question Added ✅");
       setForm({ question: "", options: ["", "", "", ""], correctAnswer: "", category: "aptitude", difficulty: "easy" });
       fetchQuestions();
@@ -65,8 +61,7 @@ function Admin() {
   const handleDelete = async (id) => {
     if (!confirm("Delete this question?")) return;
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API}/delete-question/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await API.delete(`/delete-question/${id}`);
       fetchQuestions();
     } catch (error) { alert("Delete Failed ❌"); }
   };
@@ -74,8 +69,7 @@ function Admin() {
   const handleAddPaper = async () => {
     if (!paperForm.title.trim()) return alert("Title required ❌");
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(`${API}/exam-papers`, paperForm, { headers: { Authorization: `Bearer ${token}` } });
+      await API.post("/exam-papers", paperForm);
       alert("Exam Paper Created ✅");
       setPaperForm({ title: "", category: "mixed", difficulty: "mixed", questionCount: 10, duration: 30, isActive: true });
       fetchPapers();
@@ -85,16 +79,14 @@ function Admin() {
   const handleDeletePaper = async (id) => {
     if (!confirm("Delete this paper?")) return;
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API}/exam-papers/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await API.delete(`/exam-papers/${id}`);
       fetchPapers();
     } catch (error) { alert("Delete Failed ❌"); }
   };
 
   const handleTogglePaper = async (paper) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.put(`${API}/exam-papers/${paper._id}`, { ...paper, isActive: !paper.isActive }, { headers: { Authorization: `Bearer ${token}` } });
+      await API.put(`/exam-papers/${paper._id}`, { ...paper, isActive: !paper.isActive });
       fetchPapers();
     } catch (error) { alert("Failed ❌"); }
   };

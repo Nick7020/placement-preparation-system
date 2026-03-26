@@ -6,6 +6,9 @@ function Test() {
   const navigate = useNavigate();
   const location = useLocation();
   const category = location.state?.category || null;
+  const questionCount = location.state?.questionCount || null;
+  const paperDuration = location.state?.duration || null;
+  const paperTitle = location.state?.paperTitle || null;
 
   const [questions, setQuestions] = useState([]);
   const [current, setCurrent] = useState(0);
@@ -24,11 +27,13 @@ function Test() {
   const fetchSettings = async () => {
     try {
       const res = await axios.get("https://server-production-0086.up.railway.app/settings");
-      setTimeLeft(res.data.testDuration);
-      setDuration(res.data.testDuration);
-      fetchQuestions(res.data.questionCount);
+      const duration = paperDuration || res.data.testDuration;
+      const count = questionCount || res.data.questionCount;
+      setTimeLeft(duration);
+      setDuration(duration);
+      fetchQuestions(count);
     } catch (error) {
-      fetchQuestions(5);
+      fetchQuestions(questionCount || 5);
     }
   };
 

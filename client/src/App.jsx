@@ -22,7 +22,7 @@ function App() {
 
   // Keep Railway server alive - ping every 5 minutes
   useEffect(() => {
-    const ping = () => axios.get("https://server-production-0086.up.railway.app/ping").catch(() => {});
+    const ping = () => axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/ping`).catch(() => {});
     ping();
     const interval = setInterval(ping, 5 * 60 * 1000);
     return () => clearInterval(interval);
