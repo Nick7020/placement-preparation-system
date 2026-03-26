@@ -72,6 +72,8 @@ function Test() {
 
   const handleSubmit = async () => {
     if (isSubmitted) return;
+    const confirm = window.confirm("Are you sure you want to submit the test? You cannot change answers after submission.");
+    if (!confirm) return;
     setIsSubmitted(true);
     try {
       const user = JSON.parse(localStorage.getItem("user"));
@@ -175,12 +177,6 @@ function Test() {
               ← Previous
             </button>
             <button
-              onClick={handleSubmit}
-              className="px-6 py-2 bg-green-600 text-white rounded text-sm font-semibold hover:bg-green-700"
-            >
-              Submit Test ✅
-            </button>
-            <button
               onClick={handleNext}
               disabled={current === questions.length - 1}
               className="px-6 py-2 border border-[#1a3c6e] rounded text-sm font-semibold text-[#1a3c6e] hover:bg-blue-50 disabled:opacity-40"
@@ -225,6 +221,13 @@ function Test() {
                 <div className="w-4 h-4 rounded border-2 border-gray-300"></div> Not Visited
               </div>
             </div>
+
+            <button
+              onClick={handleSubmit}
+              className="mt-4 w-full px-4 py-2 bg-green-600 text-white rounded text-sm font-semibold hover:bg-green-700"
+            >
+              Submit Test ✅
+            </button>
           </div>
         </div>
 
