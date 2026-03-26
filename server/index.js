@@ -359,10 +359,58 @@ app.get("/debug/users", async (req, res) => {
   }
 });
 
+app.get("/add-dummy-data", async (req, res) => {
+  try {
+    // Add some dummy test results for testing
+    const dummyResults = [
+      {
+        userId: "507f1f77bcf86cd799439011",
+        score: 8.5,
+        total: 10,
+        accuracy: "85%",
+        startedAt: new Date(),
+        submittedAt: new Date(),
+        timeTaken: 300
+      },
+      {
+        userId: "507f1f77bcf86cd799439012",
+        score: 7.25,
+        total: 10,
+        accuracy: "72.5%",
+        startedAt: new Date(),
+        submittedAt: new Date(),
+        timeTaken: 400
+      },
+      {
+        userId: "507f1f77bcf86cd799439013",
+        score: 9.0,
+        total: 10,
+        accuracy: "90%",
+        startedAt: new Date(),
+        submittedAt: new Date(),
+        timeTaken: 250
+      }
+    ];
+
+    await TestResult.insertMany(dummyResults);
+    
+    res.json({ message: "Dummy data added!", count: dummyResults.length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/test-endpoint", (req, res) => {
+  res.json({ message: "Test endpoint working!", timestamp: new Date() });
+});
+
 app.get("/leaderboard", async (req, res) => {
   try {
-    // First check if there are any test results
+    console.log("Leaderboard endpoint hit");
+    
+    // Check if there are any test results
     const testCount = await TestResult.countDocuments();
+    console.log("Test results count:", testCount);
     
     if (testCount === 0) {
       return res.status(200).json({
@@ -371,6 +419,7 @@ app.get("/leaderboard", async (req, res) => {
       });
     }
 
+    // Fixed aggregation with proper division handling
     const leaderboard = await TestResult.aggregate([
       {
         $group: {
@@ -381,29 +430,24 @@ app.get("/leaderboard", async (req, res) => {
         }
       },
       {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "userInfo"
-        }
-      },
-      {
-        $unwind: {
-          path: "$userInfo",
-          preserveNullAndEmptyArrays: true
+        $match: {
+          totalQuestions: { $gt: 0 } // Only include records where totalQuestions > 0
         }
       },
       {
         $addFields: {
           averageAccuracy: {
-            $multiply: [
-              { $divide: ["$totalScore", "$totalQuestions"] },
-              100
-            ]
-          },
-          userName: { $ifNull: ["$userInfo.name", "Unknown User"] },
-          userEmail: { $ifNull: ["$userInfo.email", "unknown@email.com"] }
+            $cond: {
+              if: { $gt: ["$totalQuestions", 0] },
+              then: {
+                $multiply: [
+                  { $divide: ["$totalScore", "$totalQuestions"] },
+                  100
+                ]
+              },
+              else: 0
+            }
+          }
         }
       },
       {
@@ -411,20 +455,10 @@ app.get("/leaderboard", async (req, res) => {
       },
       {
         $limit: 10
-      },
-      {
-        $project: {
-          userId: "$_id",
-          userName: 1,
-          userEmail: 1,
-          totalScore: 1,
-          totalQuestions: 1,
-          testsGiven: 1,
-          averageAccuracy: { $round: ["$averageAccuracy", 2] },
-          _id: 0
-        }
       }
     ]);
+
+    console.log("Leaderboard data:", leaderboard);
 
     res.status(200).json({
       message: "Leaderboard fetched successfully",
@@ -434,7 +468,7 @@ app.get("/leaderboard", async (req, res) => {
   } catch (error) {
     console.error("Leaderboard error:", error);
     res.status(200).json({
-      message: "Error fetching leaderboard",
+      message: "Error in leaderboard",
       error: error.message,
       data: []
     });
