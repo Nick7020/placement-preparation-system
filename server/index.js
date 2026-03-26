@@ -333,8 +333,44 @@ app.get("/progress/:userId", async (req, res) => {
   }
 });
 
+app.get("/debug/test-results", async (req, res) => {
+  try {
+    const count = await TestResult.countDocuments();
+    const results = await TestResult.find().limit(5);
+    res.json({
+      totalResults: count,
+      sampleResults: results
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/debug/users", async (req, res) => {
+  try {
+    const count = await User.countDocuments();
+    const users = await User.find().limit(5).select('name email role');
+    res.json({
+      totalUsers: count,
+      sampleUsers: users
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/leaderboard", async (req, res) => {
   try {
+    // First check if there are any test results
+    const testCount = await TestResult.countDocuments();
+    
+    if (testCount === 0) {
+      return res.status(200).json({
+        message: "No test results found",
+        data: []
+      });
+    }
+
     const leaderboard = await TestResult.aggregate([
       {
         $group: {
@@ -353,7 +389,10 @@ app.get("/leaderboard", async (req, res) => {
         }
       },
       {
-        $unwind: "$userInfo"
+        $unwind: {
+          path: "$userInfo",
+          preserveNullAndEmptyArrays: true
+        }
       },
       {
         $addFields: {
@@ -363,8 +402,8 @@ app.get("/leaderboard", async (req, res) => {
               100
             ]
           },
-          userName: "$userInfo.name",
-          userEmail: "$userInfo.email"
+          userName: { $ifNull: ["$userInfo.name", "Unknown User"] },
+          userEmail: { $ifNull: ["$userInfo.email", "unknown@email.com"] }
         }
       },
       {
@@ -381,17 +420,24 @@ app.get("/leaderboard", async (req, res) => {
           totalScore: 1,
           totalQuestions: 1,
           testsGiven: 1,
-          averageAccuracy: 1,
+          averageAccuracy: { $round: ["$averageAccuracy", 2] },
           _id: 0
         }
       }
     ]);
 
-    res.status(200).json(leaderboard);
+    res.status(200).json({
+      message: "Leaderboard fetched successfully",
+      data: leaderboard
+    });
 
   } catch (error) {
     console.error("Leaderboard error:", error);
-    res.status(200).json([]);
+    res.status(200).json({
+      message: "Error fetching leaderboard",
+      error: error.message,
+      data: []
+    });
   }
 });
 

@@ -10,9 +10,19 @@ function Leaderboard() {
     const fetchLeaderboard = async () => {
       try {
         const res = await axios.get("https://server-production-0086.up.railway.app/leaderboard");
-        setLeaders(res.data);
+        console.log("Leaderboard response:", res.data);
+        
+        // Handle new response format
+        if (res.data.data) {
+          setLeaders(res.data.data);
+        } else if (Array.isArray(res.data)) {
+          setLeaders(res.data);
+        } else {
+          setLeaders([]);
+        }
       } catch (error) {
-        console.log(error);
+        console.log("Leaderboard error:", error);
+        setLeaders([]);
       }
     };
     fetchLeaderboard();
@@ -60,17 +70,23 @@ function Leaderboard() {
               </thead>
               <tbody>
                 {leaders.map((user, index) => (
-                  <tr key={index} className={`border-t border-gray-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"} ${index < 3 ? "font-semibold" : ""}`}>
+                  <tr key={user.userId || index} className={`border-t border-gray-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50"} ${index < 3 ? "font-semibold" : ""}`}>
                     <td className="px-5 py-3 text-lg">
                       {medals[index] || `#${index + 1}`}
                     </td>
-                    <td className="px-5 py-3 text-gray-700 text-xs">{user._id}</td>
+                    <td className="px-5 py-3 text-gray-700 text-xs">
+                      {user.userName || user._id || 'Unknown User'}
+                    </td>
                     <td className="px-5 py-3 text-gray-700">{user.testsGiven}</td>
                     <td className="px-5 py-3">
-                      <span className="text-[#1a3c6e] font-bold">{user.averageAccuracy.toFixed(2)}%</span>
+                      <span className="text-[#1a3c6e] font-bold">
+                        {typeof user.averageAccuracy === 'number' 
+                          ? user.averageAccuracy.toFixed(2) 
+                          : user.averageAccuracy || '0.00'}%
+                      </span>
                     </td>
                   </tr>
-                ))}
+                ))}}
               </tbody>
             </table>
           </div>
