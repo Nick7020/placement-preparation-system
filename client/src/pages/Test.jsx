@@ -82,7 +82,7 @@ function Test() {
         answers,
         startedAt: new Date()
       });
-      navigate("/result", { state: res.data });
+      navigate("/result", { state: { ...res.data, questions, answers } });
     } catch (error) {
       console.log(error);
     }

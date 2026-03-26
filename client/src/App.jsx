@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import axios from "axios";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -17,6 +19,14 @@ import EditQuestion from "./pages/EditQuestion";
 import AdminRoute from "./components/AdminRoute";
 
 function App() {
+
+  // Keep Railway server alive - ping every 5 minutes
+  useEffect(() => {
+    const ping = () => axios.get("https://server-production-0086.up.railway.app/ping").catch(() => {});
+    ping();
+    const interval = setInterval(ping, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
   return (
     <BrowserRouter>
       <Routes>

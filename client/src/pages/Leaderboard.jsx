@@ -74,8 +74,15 @@ function Leaderboard() {
                     <td className="px-5 py-3 text-lg">
                       {medals[index] || `#${index + 1}`}
                     </td>
-                    <td className="px-5 py-3 text-gray-700 text-xs">
-                      {user.userName || user._id || 'Unknown User'}
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#1a3c6e] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          {(user.userName || 'U')[0].toUpperCase()}
+                        </div>
+                        <span className="text-gray-800 font-semibold text-sm tracking-wide">
+                          {user.userName || 'Unknown User'}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-5 py-3 text-gray-700">{user.testsGiven}</td>
                     <td className="px-5 py-3">

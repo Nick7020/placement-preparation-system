@@ -16,6 +16,20 @@ require("dotenv").config();
 
 const app = express();
 
+const cache = {};
+const CACHE_TTL = 60 * 1000; // 1 minute
+
+const getCache = (key) => {
+  if (cache[key] && Date.now() - cache[key].time < CACHE_TTL) {
+    return cache[key].data;
+  }
+  return null;
+};
+
+const setCache = (key, data) => {
+  cache[key] = { data, time: Date.now() };
+};
+
 app.use(cors());
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -29,11 +43,17 @@ app.use((req, res, next) => {
 });         
 app.use(express.json());
 
+const ExamPaper = require("./models/ExamPaper");
 const User = require("./models/User");
 
 app.get("/", (req, res) => {
   console.log("Root endpoint hit");
   res.send("Server Running");
+});
+
+// Keep alive ping
+app.get("/ping", (req, res) => {
+  res.json({ status: "alive", time: new Date() });
 });
 
 app.post("/test",(req,res)=>{
@@ -430,8 +450,14 @@ app.get("/leaderboard", async (req, res) => {
         }
       },
       {
-        $match: {
-          totalQuestions: { $gt: 0 } // Only include records where totalQuestions > 0
+        $match: { totalQuestions: { $gt: 0 } }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "userInfo"
         }
       },
       {
@@ -439,22 +465,25 @@ app.get("/leaderboard", async (req, res) => {
           averageAccuracy: {
             $cond: {
               if: { $gt: ["$totalQuestions", 0] },
-              then: {
-                $multiply: [
-                  { $divide: ["$totalScore", "$totalQuestions"] },
-                  100
-                ]
-              },
+              then: { $multiply: [{ $divide: ["$totalScore", "$totalQuestions"] }, 100] },
               else: 0
             }
-          }
+          },
+          userName: { $ifNull: [{ $arrayElemAt: ["$userInfo.name", 0] }, "Unknown"] }
         }
       },
+      { $sort: { averageAccuracy: -1 } },
+      { $limit: 10 },
       {
-        $sort: { averageAccuracy: -1 }
-      },
-      {
-        $limit: 10
+        $project: {
+          _id: 0,
+          userId: "$_id",
+          userName: 1,
+          totalScore: 1,
+          totalQuestions: 1,
+          testsGiven: 1,
+          averageAccuracy: 1
+        }
       }
     ]);
 
@@ -529,8 +558,11 @@ app.post("/start-test", authMiddleware, async (req, res) => {
 
 app.get("/settings", async (req, res) => {
   try {
+    const cached = getCache("settings");
+    if (cached) return res.json(cached);
     let setting = await Setting.findOne();
     if (!setting) setting = await Setting.create({});
+    setCache("settings", setting);
     res.json(setting);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -546,6 +578,43 @@ app.put("/settings", authMiddleware, adminMiddleware, async (req, res) => {
     setting.questionCount = questionCount;
     await setting.save();
     res.json({ message: "Settings Updated ✅", setting });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Exam Paper APIs
+app.get("/exam-papers", async (req, res) => {
+  try {
+    const papers = await ExamPaper.find({ isActive: true }).sort({ createdAt: -1 });
+    res.json(papers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/exam-papers", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const paper = await ExamPaper.create(req.body);
+    res.json({ message: "Exam Paper Created ✅", paper });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put("/exam-papers/:id", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const paper = await ExamPaper.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ message: "Exam Paper Updated ✅", paper });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/exam-papers/:id", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await ExamPaper.findByIdAndDelete(req.params.id);
+    res.json({ message: "Exam Paper Deleted ✅" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -569,7 +638,13 @@ app.get("/make-admin", async (req, res) => {
 
 
 
-mongoose.connect(process.env.MONGO_URL)
+mongoose.connect(process.env.MONGO_URL, {
+  maxPoolSize: 50,
+  minPoolSize: 10,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+  bufferCommands: false
+})
 .then(()=> console.log("MongoDB Connected"))
 .catch(err=>console.log(err));
 
