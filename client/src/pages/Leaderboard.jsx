@@ -9,7 +9,7 @@ function Leaderboard() {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const res = await axios.get("https://server-production-0086.up.railway.app/leaderboard");
+        const res = await axios.get("http://localhost:5000/leaderboard");
         console.log("Leaderboard response:", res.data);
         
         // Handle new response format
