@@ -1,3 +1,10 @@
+const multer = require("multer");
+const csv = require("csv-parser");
+const fs = require("fs");
+const path = require("path");
+
+const upload = multer({ dest: "uploads/" });
+
 const express = require("express");
 const cors = require("cors");
 
@@ -586,7 +593,9 @@ app.put("/settings", authMiddleware, adminMiddleware, async (req, res) => {
 // Exam Paper APIs
 app.get("/exam-papers", async (req, res) => {
   try {
-    const papers = await ExamPaper.find({ isActive: true }).sort({ createdAt: -1 });
+    const papers = await ExamPaper.find({ isActive: true })
+      .populate("selectedQuestions")
+      .sort({ createdAt: -1 });
     res.json(papers);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -615,6 +624,59 @@ app.delete("/exam-papers/:id", authMiddleware, adminMiddleware, async (req, res)
   try {
     await ExamPaper.findByIdAndDelete(req.params.id);
     res.json({ message: "Exam Paper Deleted ✅" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Bulk Upload API
+app.post("/bulk-upload", authMiddleware, adminMiddleware, upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded ❌" });
+
+    const results = [];
+    const errors = [];
+    const validCategories = ["aptitude", "dsa", "technical", "mern", "reasoning"];
+    const validDifficulties = ["easy", "medium", "hard"];
+
+    fs.createReadStream(req.file.path)
+      .pipe(csv())
+      .on("data", (row) => results.push(row))
+      .on("end", async () => {
+        const questions = [];
+
+        for (let row of results) {
+          const { question, option1, option2, option3, option4, correctAnswer, category, difficulty } = row;
+
+          if (!question || !option1 || !option2 || !option3 || !option4 || !correctAnswer || !category) {
+            errors.push(`Skipped: "${question}" - missing fields`);
+            continue;
+          }
+
+          if (!validCategories.includes(category.toLowerCase())) {
+            errors.push(`Skipped: "${question}" - invalid category`);
+            continue;
+          }
+
+          questions.push({
+            question: question.trim(),
+            options: [option1.trim(), option2.trim(), option3.trim(), option4.trim()],
+            correctAnswer: correctAnswer.trim(),
+            category: category.toLowerCase(),
+            difficulty: validDifficulties.includes(difficulty?.toLowerCase()) ? difficulty.toLowerCase() : "medium"
+          });
+        }
+
+        await Question.insertMany(questions);
+        fs.unlinkSync(req.file.path);
+
+        res.json({
+          message: `✅ ${questions.length} questions uploaded successfully!`,
+          uploaded: questions.length,
+          skipped: errors.length,
+          errors
+        });
+      });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

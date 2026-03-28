@@ -39,6 +39,15 @@ function Test() {
 
   const fetchQuestions = async (count = 5) => {
     try {
+      const paperId = location.state?.paperId;
+      if (paperId) {
+        const res = await axios.get(`https://server-production-0086.up.railway.app/exam-papers`);
+        const paper = res.data.find(p => p._id === paperId);
+        if (paper && paper.selectedQuestions && paper.selectedQuestions.length > 0) {
+          setQuestions(paper.selectedQuestions);
+          return;
+        }
+      }
       const url = category
         ? `https://server-production-0086.up.railway.app/random-questions?count=${count}&category=${category}`
         : `https://server-production-0086.up.railway.app/random-questions?count=${count}`;
