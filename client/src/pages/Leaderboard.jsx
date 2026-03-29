@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import API from "../services/api";
 
 function Leaderboard() {
   const [leaders, setLeaders] = useState([]);
@@ -9,7 +9,7 @@ function Leaderboard() {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/leaderboard");
+        const res = await API.get("/leaderboard");
         console.log("Leaderboard response:", res.data);
         
         // Handle new response format

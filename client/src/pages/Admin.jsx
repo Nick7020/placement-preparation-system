@@ -1,441 +1,436 @@
-import API from "../services/api";
+import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../services/api";
+
+const TABS = ["Questions", "Add Question", "Exam Papers", "Settings"];
 
 function Admin() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("Questions");
+
+  // Questions state
   const [questions, setQuestions] = useState([]);
-  const [settings, setSettings] = useState({ testDuration: 60, questionCount: 5 });
-  const [durationMinutes, setDurationMinutes] = useState(1);
-  const [activeTab, setActiveTab] = useState("questions");
-  const [papers, setPapers] = useState([]);
-  const [paperForm, setPaperForm] = useState({ title: "", category: "mixed", difficulty: "mixed", questionCount: 10, duration: 30, isActive: true });
-  const [selectedQuestions, setSelectedQuestions] = useState([]);
-  const [filterCategory, setFilterCategory] = useState("");
-  const [showAddQuestion, setShowAddQuestion] = useState(false);
-  const [newQ, setNewQ] = useState({ question: "", options: ["", "", "", ""], correctAnswer: "", category: "aptitude", difficulty: "easy" });
+  const [qPage, setQPage] = useState(1);
+  const [qTotal, setQTotal] = useState(0);
+  const [qFilter, setQFilter] = useState({ category: "", difficulty: "" });
+  const LIMIT = 10;
+
+  // Add Question state
   const [form, setForm] = useState({ question: "", options: ["", "", "", ""], correctAnswer: "", category: "aptitude", difficulty: "easy" });
-  const [uploadResult, setUploadResult] = useState(null);
+  const [addMsg, setAddMsg] = useState("");
 
-  useEffect(() => { fetchQuestions(); fetchSettings(); fetchPapers(); }, []);
+  // Exam Papers state
+  const [papers, setPapers] = useState([]);
+  const [paperForm, setPaperForm] = useState({ title: "", category: "mixed", difficulty: "mixed", questionCount: 10, duration: 30 });
+  const [paperMsg, setPaperMsg] = useState("");
+  const [allQuestions, setAllQuestions] = useState([]);
+  const [selectedQIds, setSelectedQIds] = useState([]);
+  const [qSearch, setQSearch] = useState("");
+  const [inlineForm, setInlineForm] = useState({ question: "", options: ["", "", "", ""], correctAnswer: "", category: "aptitude", difficulty: "easy" });
+  const [inlineMsg, setInlineMsg] = useState("");
+  const [showInline, setShowInline] = useState(false);
 
-  const fetchSettings = async () => {
+  // Settings state
+  const [settings, setSettings] = useState({ testDuration: 60, questionCount: 5 });
+  const [settingMsg, setSettingMsg] = useState("");
+
+  // Bulk upload
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkMsg, setBulkMsg] = useState("");
+
+  useEffect(() => { fetchQuestions(); }, [qPage, qFilter]);
+  useEffect(() => { fetchPapers(); fetchSettings(); fetchAllQuestions(); }, []);
+
+  const fetchQuestions = async () => {
     try {
-      const res = await API.get("/settings");
-      setSettings(res.data);
-      setDurationMinutes(Math.round(res.data.testDuration / 60));
-    } catch (error) { console.log(error); }
+      const params = `page=${qPage}&limit=${LIMIT}${qFilter.category ? `&category=${qFilter.category}` : ""}${qFilter.difficulty ? `&difficulty=${qFilter.difficulty}` : ""}`;
+      const res = await API.get(`/questions?${params}`);
+      setQuestions(res.data.data);
+      setQTotal(res.data.totalPages);
+    } catch (e) { console.log(e); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this question?")) return;
+    try {
+      await API.delete(`/delete-question/${id}`);
+      fetchQuestions();
+    } catch (e) { alert("Delete Failed ❌"); }
+  };
+
+  const handleAddQuestion = async () => {
+    try {
+      await API.post("/add-question", form);
+      setAddMsg("Question Added ✅");
+      setForm({ question: "", options: ["", "", "", ""], correctAnswer: "", category: "aptitude", difficulty: "easy" });
+      setTimeout(() => setAddMsg(""), 3000);
+    } catch (e) { setAddMsg(e.response?.data?.message || "Failed ❌"); }
+  };
+
+  const fetchAllQuestions = async () => {
+    try {
+      const res = await API.get("/questions?page=1&limit=500");
+      setAllQuestions(res.data.data);
+    } catch (e) { console.log(e); }
+  };
+
+  const toggleSelectQ = (id) => {
+    setSelectedQIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleAddInlineQuestion = async () => {
+    try {
+      const res = await API.post("/add-question", inlineForm);
+      const newQ = res.data.question;
+      setAllQuestions(prev => [...prev, newQ]);
+      setSelectedQIds(prev => [...prev, newQ._id]);
+      setInlineMsg("Question added & selected ✅");
+      setInlineForm({ question: "", options: ["", "", "", ""], correctAnswer: "", category: "aptitude", difficulty: "easy" });
+      setShowInline(false);
+      setTimeout(() => setInlineMsg(""), 3000);
+    } catch (e) { setInlineMsg(e.response?.data?.message || "Failed ❌"); }
   };
 
   const fetchPapers = async () => {
     try {
       const res = await API.get("/exam-papers");
       setPapers(res.data);
-    } catch (error) { console.log(error); }
+    } catch (e) { console.log(e); }
   };
 
-  const fetchQuestions = async () => {
+  const handleAddPaper = async () => {
     try {
-      const res = await API.get("/questions?page=1&limit=100");
-      setQuestions(res.data.data);
-    } catch (error) { console.log(error); }
+      await API.post("/exam-papers", { ...paperForm, selectedQuestions: selectedQIds });
+      setPaperMsg("Paper Created ✅");
+      setPaperForm({ title: "", category: "mixed", difficulty: "mixed", questionCount: 10, duration: 30 });
+      setSelectedQIds([]);
+      fetchPapers();
+      setTimeout(() => setPaperMsg(""), 3000);
+    } catch (e) { setPaperMsg("Failed ❌"); }
+  };
+
+  const handleDeletePaper = async (id) => {
+    if (!window.confirm("Delete this paper?")) return;
+    try {
+      await API.delete(`/exam-papers/${id}`);
+      fetchPapers();
+    } catch (e) { alert("Delete Failed ❌"); }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await API.get("/settings");
+      setSettings({ testDuration: res.data.testDuration, questionCount: res.data.questionCount });
+    } catch (e) { console.log(e); }
   };
 
   const handleSaveSettings = async () => {
     try {
-      await API.put("/settings", { ...settings, testDuration: durationMinutes * 60 });
-      alert("Settings Saved ✅");
-    } catch (error) { alert("Failed ❌"); }
+      await API.put("/settings", settings);
+      setSettingMsg("Settings Saved ✅");
+      setTimeout(() => setSettingMsg(""), 3000);
+    } catch (e) { setSettingMsg("Failed ❌"); }
   };
 
-  const handleOptionChange = (index, value) => {
-    const updated = [...form.options];
-    updated[index] = value;
-    setForm({ ...form, options: updated });
-  };
-
-  const handleBulkUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append("file", file);
+  const handleBulkUpload = async () => {
+    if (!bulkFile) return setBulkMsg("Select a file first ❌");
+    const data = new FormData();
+    data.append("file", bulkFile);
     try {
-      const res = await API.post("/bulk-upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-      setUploadResult(res.data);
+      const res = await API.post("/bulk-upload", data);
+      setBulkMsg(`✅ ${res.data.uploaded} uploaded, ${res.data.skipped} skipped`);
       fetchQuestions();
-    } catch (error) { alert("Upload Failed ❌"); }
-    e.target.value = "";
+    } catch (e) { setBulkMsg("Upload Failed ❌"); }
   };
 
-  const downloadSample = () => {
-    const csv = `question,option1,option2,option3,option4,correctAnswer,category,difficulty\nWhat is React?,A library,A framework,A language,A database,A library,technical,easy\nWhat is MongoDB?,SQL DB,NoSQL DB,Graph DB,XML DB,NoSQL DB,mern,easy`;
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "sample_questions.csv";
-    a.click();
-  };
-
-  const handleAddQuestion = async () => {
-    try {
-      await API.post("/add-question", form);
-      alert("Question Added ✅");
-      setForm({ question: "", options: ["", "", "", ""], correctAnswer: "", category: "aptitude", difficulty: "easy" });
-      fetchQuestions();
-    } catch (error) { alert(error.response?.data?.message || "Failed ❌"); }
-  };
-
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this question?")) return;
-    try {
-      await API.delete(`/delete-question/${id}`);
-      fetchQuestions();
-    } catch (error) { alert("Delete Failed ❌"); }
-  };
-
-  const handleAddQuickQuestion = async () => {
-    if (!newQ.question.trim()) return alert("Question required ❌");
-    if (newQ.options.some(o => !o.trim())) return alert("All options required ❌");
-    if (!newQ.correctAnswer.trim()) return alert("Correct answer required ❌");
-    try {
-      const res = await API.post("/add-question", newQ);
-      const addedId = res.data.question._id;
-      setSelectedQuestions(prev => [...prev, addedId]);
-      await fetchQuestions();
-      setNewQ({ question: "", options: ["", "", "", ""], correctAnswer: "", category: "aptitude", difficulty: "easy" });
-      setShowAddQuestion(false);
-      alert("Question added & selected ✅");
-    } catch (error) { alert(error.response?.data?.message || "Failed ❌"); }
-  };
-
-  const handleAddPaper = async () => {
-    if (!paperForm.title.trim()) return alert("Title required ❌");
-    if (selectedQuestions.length === 0) return alert("Select at least 1 question ❌");
-    try {
-      await API.post("/exam-papers", { ...paperForm, questionCount: selectedQuestions.length, selectedQuestions });
-      alert("Exam Paper Created ✅");
-      setPaperForm({ title: "", category: "mixed", difficulty: "mixed", questionCount: 10, duration: 30, isActive: true });
-      setSelectedQuestions([]);
-      fetchPapers();
-    } catch (error) { alert("Failed ❌"); }
-  };
-
-  const handleDeletePaper = async (id) => {
-    if (!confirm("Delete this paper?")) return;
-    try {
-      await API.delete(`/exam-papers/${id}`);
-      fetchPapers();
-    } catch (error) { alert("Delete Failed ❌"); }
-  };
-
-  const handleTogglePaper = async (paper) => {
-    try {
-      await API.put(`/exam-papers/${paper._id}`, { ...paper, isActive: !paper.isActive });
-      fetchPapers();
-    } catch (error) { alert("Failed ❌"); }
-  };
-
-  const categoryColors = {
-    aptitude: "bg-blue-100 text-blue-700", dsa: "bg-purple-100 text-purple-700",
-    technical: "bg-green-100 text-green-700", mern: "bg-orange-100 text-orange-700",
-    mixed: "bg-gray-100 text-gray-700", reasoning: "bg-pink-100 text-pink-700",
-  };
-
-  const difficultyColors = {
-    easy: "bg-green-100 text-green-700", medium: "bg-yellow-100 text-yellow-700",
-    hard: "bg-red-100 text-red-700", mixed: "bg-gray-100 text-gray-700",
-  };
+  const inputCls = "w-full bg-[#1e2a3a] border border-[#2e3f52] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-[#4a9eff]";
+  const selectCls = "bg-[#1e2a3a] border border-[#2e3f52] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-[#4a9eff]";
+  const btnPrimary = "bg-[#4a9eff] hover:bg-[#3a8eef] text-white px-4 py-2 rounded text-sm font-semibold transition-colors";
+  const btnDanger = "bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors";
+  const btnEdit = "bg-[#2e3f52] hover:bg-[#3a4f62] text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors";
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-[#0f1923] flex">
 
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-gray-800">Admin Panel 🛠️</h2>
-          <button onClick={() => navigate("/dashboard")} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-semibold">
-            ⬅️ Dashboard
-          </button>
+      {/* Sidebar */}
+      <div className="w-56 bg-[#141f2e] border-r border-[#1e2a3a] flex flex-col flex-shrink-0">
+        <div className="px-5 py-5 border-b border-[#1e2a3a]">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-[#4a9eff] rounded flex items-center justify-center text-white font-bold text-xs">P</div>
+            <span className="text-white font-bold text-sm">Admin Panel</span>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          {["questions", "papers", "settings"].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-5 py-2 rounded-lg font-semibold text-sm capitalize ${activeTab === tab ? "bg-[#1a3c6e] text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>
-              {tab === "questions" ? "📋 Questions" : tab === "papers" ? "📝 Exam Papers" : "⚙️ Settings"}
+        <nav className="flex-1 py-4">
+          {TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`w-full text-left px-5 py-3 text-sm font-medium transition-colors flex items-center gap-3
+                ${activeTab === tab
+                  ? "bg-[#4a9eff] text-white"
+                  : "text-gray-400 hover:text-white hover:bg-[#1e2a3a]"
+                }`}
+            >
+              {tab === "Questions" && "📋"}
+              {tab === "Add Question" && "➕"}
+              {tab === "Exam Papers" && "📝"}
+              {tab === "Settings" && "⚙️"}
+              {tab}
             </button>
           ))}
+        </nav>
+
+        <div className="px-5 py-4 border-t border-[#1e2a3a]">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="w-full text-left text-gray-400 hover:text-white text-sm flex items-center gap-2 transition-colors"
+          >
+            ← Dashboard
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* Top Bar */}
+        <div className="bg-[#141f2e] border-b border-[#1e2a3a] px-6 py-4 flex justify-between items-center">
+          <h1 className="text-white font-bold text-lg">{activeTab}</h1>
+          <span className="text-gray-400 text-sm">Placement Preparation System</span>
         </div>
 
-        {/* Settings Tab */}
-        {activeTab === "settings" && (
-          <div className="bg-white rounded-2xl shadow-md p-6">
-            <h3 className="text-xl font-bold text-indigo-600 mb-4">Test Settings ⚙️</h3>
-            <div className="flex gap-3 mb-4">
-              <div className="flex-1">
-                <label className="text-sm text-gray-500 mb-1 block">Duration (minutes)</label>
-                <input type="number" min="1" max="60" value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+
+          {/* ── QUESTIONS TAB ── */}
+          {activeTab === "Questions" && (
+            <div>
+              {/* Filters */}
+              <div className="flex gap-3 mb-5 flex-wrap">
+                <select className={selectCls} value={qFilter.category} onChange={(e) => { setQFilter({ ...qFilter, category: e.target.value }); setQPage(1); }}>
+                  <option value="">All Categories</option>
+                  {["aptitude","dsa","technical","mern","reasoning"].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select className={selectCls} value={qFilter.difficulty} onChange={(e) => { setQFilter({ ...qFilter, difficulty: e.target.value }); setQPage(1); }}>
+                  <option value="">All Difficulties</option>
+                  {["easy","medium","hard"].map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <span className="text-gray-400 text-sm self-center">Page {qPage} of {qTotal}</span>
               </div>
-              <div className="flex-1">
-                <label className="text-sm text-gray-500 mb-1 block">Questions Per Test</label>
-                <input type="number" min="1" max="50" value={settings.questionCount}
-                  onChange={(e) => setSettings({ ...settings, questionCount: Number(e.target.value) })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+
+              {/* Bulk Upload */}
+              <div className="bg-[#141f2e] border border-[#1e2a3a] rounded-lg p-4 mb-5 flex items-center gap-3 flex-wrap">
+                <span className="text-gray-300 text-sm font-semibold">Bulk Upload CSV:</span>
+                <input type="file" accept=".csv" onChange={(e) => setBulkFile(e.target.files[0])} className="text-gray-300 text-sm" />
+                <button onClick={handleBulkUpload} className={btnPrimary}>Upload</button>
+                {bulkMsg && <span className="text-sm text-green-400">{bulkMsg}</span>}
+              </div>
+
+              {/* Questions Table */}
+              <div className="bg-[#141f2e] border border-[#1e2a3a] rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#1e2a3a]">
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">#</th>
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">Question</th>
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">Category</th>
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">Difficulty</th>
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {questions.map((q, i) => (
+                      <tr key={q._id} className="border-b border-[#1e2a3a] hover:bg-[#1e2a3a] transition-colors">
+                        <td className="px-4 py-3 text-gray-500">{(qPage - 1) * LIMIT + i + 1}</td>
+                        <td className="px-4 py-3 text-gray-200 max-w-xs truncate">{q.question}</td>
+                        <td className="px-4 py-3">
+                          <span className="bg-[#1e2a3a] text-[#4a9eff] px-2 py-0.5 rounded text-xs font-semibold uppercase">{q.category}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded text-xs font-semibold uppercase
+                            ${q.difficulty === "easy" ? "bg-green-900 text-green-400" :
+                              q.difficulty === "medium" ? "bg-yellow-900 text-yellow-400" :
+                              "bg-red-900 text-red-400"}`}>
+                            {q.difficulty}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 flex gap-2">
+                          <button onClick={() => navigate(`/edit-question/${q._id}`)} className={btnEdit}>Edit ✏️</button>
+                          <button onClick={() => handleDelete(q._id)} className={btnDanger}>Delete 🗑</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className="flex gap-2 mt-4">
+                <button disabled={qPage === 1} onClick={() => setQPage(qPage - 1)} className="px-3 py-1.5 bg-[#1e2a3a] text-gray-300 rounded text-sm disabled:opacity-40 hover:bg-[#2e3f52]">← Prev</button>
+                <button disabled={qPage === qTotal} onClick={() => setQPage(qPage + 1)} className="px-3 py-1.5 bg-[#1e2a3a] text-gray-300 rounded text-sm disabled:opacity-40 hover:bg-[#2e3f52]">Next →</button>
               </div>
             </div>
-            <button onClick={handleSaveSettings} className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 font-semibold">
-              Save Settings ⚙️
-            </button>
-          </div>
-        )}
+          )}
 
-        {/* Exam Papers Tab */}
-        {activeTab === "papers" && (
-          <div>
-            <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
-              <h3 className="text-xl font-bold text-purple-600 mb-4">Create Exam Paper 📝</h3>
-              <input type="text" placeholder="Paper Title (e.g. Mock Test 1)" value={paperForm.title}
-                onChange={(e) => setPaperForm({ ...paperForm, title: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-purple-400" />
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Category</label>
-                  <select value={paperForm.category} onChange={(e) => setPaperForm({ ...paperForm, category: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400">
-                    <option value="mixed">Mixed (All)</option>
-                    <option value="aptitude">Aptitude</option>
-                    <option value="dsa">DSA</option>
-                    <option value="technical">Technical</option>
-                    <option value="mern">MERN</option>
-                    <option value="reasoning">Reasoning</option>
+          {/* ── ADD QUESTION TAB ── */}
+          {activeTab === "Add Question" && (
+            <div className="max-w-xl">
+              <div className="bg-[#141f2e] border border-[#1e2a3a] rounded-lg p-6 flex flex-col gap-4">
+                <input className={inputCls} placeholder="Question text" value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} />
+                {form.options.map((opt, i) => (
+                  <input key={i} className={inputCls} placeholder={`Option ${i + 1}`} value={opt}
+                    onChange={(e) => { const o = [...form.options]; o[i] = e.target.value; setForm({ ...form, options: o }); }} />
+                ))}
+                <input className={inputCls} placeholder="Correct Answer (exact match)" value={form.correctAnswer} onChange={(e) => setForm({ ...form, correctAnswer: e.target.value })} />
+                <div className="flex gap-3">
+                  <select className={`${selectCls} flex-1`} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                    {["aptitude","dsa","technical","mern","reasoning"].map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <select className={`${selectCls} flex-1`} value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })}>
+                    {["easy","medium","hard"].map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Difficulty</label>
-                  <select value={paperForm.difficulty} onChange={(e) => setPaperForm({ ...paperForm, difficulty: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400">
-                    <option value="mixed">Mixed</option>
-                    <option value="easy">Easy</option>
-                    <option value="medium">Medium</option>
-                    <option value="hard">Hard</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">No. of Questions</label>
-                  <input type="number" min="1" max="50" value={paperForm.questionCount}
-                    onChange={(e) => setPaperForm({ ...paperForm, questionCount: Number(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Duration (minutes)</label>
-                  <input type="number" min="1" max="180" value={paperForm.duration}
-                    onChange={(e) => setPaperForm({ ...paperForm, duration: Number(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                </div>
+                <button onClick={handleAddQuestion} className={btnPrimary}>Add Question ➕</button>
+                {addMsg && <p className="text-green-400 text-sm">{addMsg}</p>}
               </div>
-              {/* Question Selection */}
-              <div className="mb-3">
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs font-bold text-gray-600">Select Questions ({selectedQuestions.length} selected)</label>
-                  <div className="flex gap-2">
-                    <button onClick={() => setShowAddQuestion(!showAddQuestion)}
-                      className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded font-semibold hover:bg-purple-200">
-                      {showAddQuestion ? "Cancel" : "+ Add New Question"}
-                    </button>
-                    <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
-                      className="text-xs border border-gray-300 rounded px-2 py-1">
-                      <option value="">All Categories</option>
-                      <option value="aptitude">Aptitude</option>
-                      <option value="dsa">DSA</option>
-                      <option value="technical">Technical</option>
-                      <option value="mern">MERN</option>
-                      <option value="reasoning">Reasoning</option>
+            </div>
+          )}
+
+          {/* ── EXAM PAPERS TAB ── */}
+          {activeTab === "Exam Papers" && (
+            <div>
+              {/* Create Paper Form */}
+              <div className="bg-[#141f2e] border border-[#1e2a3a] rounded-lg p-6 mb-6">
+                <h3 className="text-white font-semibold mb-4">Create New Paper</h3>
+                <div className="flex flex-col gap-3">
+                  <input className={inputCls} placeholder="Paper Title" value={paperForm.title} onChange={(e) => setPaperForm({ ...paperForm, title: e.target.value })} />
+                  <div className="flex gap-3">
+                    <select className={`${selectCls} flex-1`} value={paperForm.category} onChange={(e) => setPaperForm({ ...paperForm, category: e.target.value })}>
+                      {["mixed","aptitude","dsa","technical","mern","reasoning"].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <select className={`${selectCls} flex-1`} value={paperForm.difficulty} onChange={(e) => setPaperForm({ ...paperForm, difficulty: e.target.value })}>
+                      {["mixed","easy","medium","hard"].map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
-                </div>
-
-                {/* Inline Add Question Form */}
-                {showAddQuestion && (
-                  <div className="border-2 border-purple-200 rounded-lg p-3 mb-3 bg-purple-50">
-                    <p className="text-xs font-bold text-purple-700 mb-2">New Question</p>
-                    <input type="text" placeholder="Question" value={newQ.question}
-                      onChange={(e) => setNewQ({ ...newQ, question: e.target.value })}
-                      className="w-full border border-gray-300 rounded px-3 py-1.5 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-purple-400" />
-                    {newQ.options.map((opt, i) => (
-                      <input key={i} type="text" placeholder={`Option ${i + 1}`} value={opt}
-                        onChange={(e) => { const o = [...newQ.options]; o[i] = e.target.value; setNewQ({ ...newQ, options: o }); }}
-                        className="w-full border border-gray-300 rounded px-3 py-1.5 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-purple-400" />
-                    ))}
-                    <input type="text" placeholder="Correct Answer (exact match)" value={newQ.correctAnswer}
-                      onChange={(e) => setNewQ({ ...newQ, correctAnswer: e.target.value })}
-                      className="w-full border border-gray-300 rounded px-3 py-1.5 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-purple-400" />
-                    <div className="flex gap-2 mb-2">
-                      <select value={newQ.category} onChange={(e) => setNewQ({ ...newQ, category: e.target.value })}
-                        className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-xs">
-                        <option value="aptitude">Aptitude</option>
-                        <option value="dsa">DSA</option>
-                        <option value="technical">Technical</option>
-                        <option value="mern">MERN</option>
-                        <option value="reasoning">Reasoning</option>
-                      </select>
-                      <select value={newQ.difficulty} onChange={(e) => setNewQ({ ...newQ, difficulty: e.target.value })}
-                        className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-xs">
-                        <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
-                      </select>
-                    </div>
-                    <button onClick={handleAddQuickQuestion}
-                      className="w-full bg-purple-600 text-white py-1.5 rounded text-xs font-semibold hover:bg-purple-700">
-                      Add & Select This Question ✅
-                    </button>
+                  <div className="flex gap-3">
+                    <input className={`${inputCls} flex-1`} type="number" placeholder="Questions" value={paperForm.questionCount} onChange={(e) => setPaperForm({ ...paperForm, questionCount: Number(e.target.value) })} />
+                    <input className={`${inputCls} flex-1`} type="number" placeholder="Duration (min)" value={paperForm.duration} onChange={(e) => setPaperForm({ ...paperForm, duration: Number(e.target.value) })} />
                   </div>
-                )}
 
-                <div className="border border-gray-200 rounded-lg max-h-60 overflow-y-auto">
-                  {questions
-                    .filter(q => filterCategory ? q.category === filterCategory : true)
-                    .map((q) => (
-                      <label key={q._id} className={`flex items-start gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${
-                        selectedQuestions.includes(q._id) ? "bg-purple-50" : ""
-                      }`}>
-                        <input type="checkbox" className="mt-1 flex-shrink-0"
-                          checked={selectedQuestions.includes(q._id)}
-                          onChange={(e) => {
-                            if (e.target.checked) setSelectedQuestions([...selectedQuestions, q._id]);
-                            else setSelectedQuestions(selectedQuestions.filter(id => id !== q._id));
-                          }}
-                        />
-                        <div>
-                          <p className="text-xs text-gray-700">{q.question}</p>
-                          <div className="flex gap-1 mt-1">
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${categoryColors[q.category]}`}>{q.category}</span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${difficultyColors[q.difficulty]}`}>{q.difficulty}</span>
-                          </div>
+                  {/* Question Selector */}
+                  <div className="border border-[#2e3f52] rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-gray-300 text-sm font-semibold">Select Questions ({selectedQIds.length} selected)</span>
+                      <button onClick={() => setShowInline(!showInline)} className="text-[#4a9eff] text-xs hover:underline">+ Add New Question</button>
+                    </div>
+
+                    {/* Inline Add Question Form */}
+                    {showInline && (
+                      <div className="bg-[#0f1923] border border-[#2e3f52] rounded-lg p-4 mb-3 flex flex-col gap-2">
+                        <p className="text-gray-400 text-xs font-semibold mb-1">New Question (will be auto-selected)</p>
+                        <input className={inputCls} placeholder="Question text" value={inlineForm.question} onChange={(e) => setInlineForm({ ...inlineForm, question: e.target.value })} />
+                        {inlineForm.options.map((opt, i) => (
+                          <input key={i} className={inputCls} placeholder={`Option ${i + 1}`} value={opt}
+                            onChange={(e) => { const o = [...inlineForm.options]; o[i] = e.target.value; setInlineForm({ ...inlineForm, options: o }); }} />
+                        ))}
+                        <input className={inputCls} placeholder="Correct Answer (exact match)" value={inlineForm.correctAnswer} onChange={(e) => setInlineForm({ ...inlineForm, correctAnswer: e.target.value })} />
+                        <div className="flex gap-2">
+                          <select className={`${selectCls} flex-1`} value={inlineForm.category} onChange={(e) => setInlineForm({ ...inlineForm, category: e.target.value })}>
+                            {["aptitude","dsa","technical","mern","reasoning"].map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                          <select className={`${selectCls} flex-1`} value={inlineForm.difficulty} onChange={(e) => setInlineForm({ ...inlineForm, difficulty: e.target.value })}>
+                            {["easy","medium","hard"].map(d => <option key={d} value={d}>{d}</option>)}
+                          </select>
                         </div>
-                      </label>
-                    ))}
-                </div>
-              </div>
+                        <div className="flex gap-2">
+                          <button onClick={handleAddInlineQuestion} className={`${btnPrimary} flex-1`}>Add & Select ✅</button>
+                          <button onClick={() => setShowInline(false)} className="flex-1 bg-[#1e2a3a] text-gray-300 px-4 py-2 rounded text-sm">Cancel</button>
+                        </div>
+                        {inlineMsg && <p className="text-green-400 text-xs">{inlineMsg}</p>}
+                      </div>
+                    )}
 
-              <button onClick={handleAddPaper} className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 font-semibold">
-                Create Paper ({selectedQuestions.length} questions) ➕
-              </button>
-            </div>
+                    {/* Search */}
+                    <input className={`${inputCls} mb-3`} placeholder="Search questions..." value={qSearch} onChange={(e) => setQSearch(e.target.value)} />
 
-            <h3 className="text-lg font-bold text-gray-800 mb-3">All Exam Papers ({papers.length})</h3>
-            <div className="flex flex-col gap-3">
-              {papers.length === 0 && <p className="text-gray-400 text-center py-6">No papers created yet</p>}
-              {papers.map((paper) => (
-                <div key={paper._id} className="bg-white rounded-xl shadow-sm p-4 flex justify-between items-center">
-                  <div>
-                    <h4 className="font-bold text-gray-800">{paper.title}</h4>
-                    <div className="flex gap-2 mt-1 flex-wrap">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${categoryColors[paper.category]}`}>{paper.category.toUpperCase()}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${difficultyColors[paper.difficulty]}`}>{paper.difficulty.toUpperCase()}</span>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">{paper.questionCount} Qs</span>
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">⏱ {paper.duration} min</span>
+                    {/* Question List */}
+                    <div className="max-h-60 overflow-y-auto flex flex-col gap-1">
+                      {allQuestions
+                        .filter(q => q.question.toLowerCase().includes(qSearch.toLowerCase()))
+                        .map(q => (
+                          <label key={q._id} className={`flex items-start gap-3 px-3 py-2 rounded cursor-pointer transition-colors
+                            ${selectedQIds.includes(q._id) ? "bg-[#1a3a5c] border border-[#4a9eff]" : "hover:bg-[#1e2a3a] border border-transparent"}`}>
+                            <input type="checkbox" checked={selectedQIds.includes(q._id)} onChange={() => toggleSelectQ(q._id)} className="mt-0.5 accent-[#4a9eff]" />
+                            <div>
+                              <p className="text-gray-200 text-xs">{q.question}</p>
+                              <p className="text-gray-500 text-xs mt-0.5">{q.category} • {q.difficulty}</p>
+                            </div>
+                          </label>
+                        ))}
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleTogglePaper(paper)}
-                      className={`px-3 py-1 rounded text-xs font-semibold ${paper.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                      {paper.isActive ? "Active" : "Inactive"}
-                    </button>
-                    <button onClick={() => handleDeletePaper(paper._id)} className="px-3 py-1 rounded text-xs font-semibold bg-red-100 text-red-600 hover:bg-red-200">
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* Questions Tab */}
-        {activeTab === "questions" && (
-          <div>
-            {/* Bulk Upload */}
-            <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
-              <h3 className="text-xl font-bold text-blue-600 mb-4">Bulk Upload Questions 📂</h3>
-              <div className="flex gap-3 mb-3">
-                <label className="flex-1 cursor-pointer">
-                  <div className="border-2 border-dashed border-blue-300 rounded-lg p-4 text-center hover:border-blue-500 hover:bg-blue-50 transition-all">
-                    <p className="text-blue-600 font-semibold text-sm">📁 Click to upload CSV file</p>
-                    <p className="text-gray-400 text-xs mt-1">CSV format only</p>
-                  </div>
-                  <input type="file" accept=".csv" className="hidden" onChange={handleBulkUpload} />
-                </label>
-                <button onClick={downloadSample} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-200">
-                  ⬇️ Sample CSV
-                </button>
+                  <button onClick={handleAddPaper} className={btnPrimary}>Create Paper 📝</button>
+                  {paperMsg && <p className="text-green-400 text-sm">{paperMsg}</p>}
+                </div>
               </div>
-              {uploadResult && (
-                <div className={`p-3 rounded-lg text-sm ${uploadResult.skipped > 0 ? "bg-yellow-50 border border-yellow-200" : "bg-green-50 border border-green-200"}`}>
-                  <p className="font-semibold">{uploadResult.message}</p>
-                  {uploadResult.skipped > 0 && <p className="text-yellow-600 text-xs mt-1">{uploadResult.skipped} questions skipped</p>}
-                </div>
-              )}
-            </div>
 
-            <div className="bg-white rounded-2xl shadow-md p-6 mb-8">
-              <h3 className="text-xl font-bold text-green-600 mb-4">Add New Question ➕</h3>
-              <input type="text" placeholder="Question" value={form.question}
-                onChange={(e) => setForm({ ...form, question: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-green-400" />
-              {form.options.map((opt, i) => (
-                <input key={i} type="text" placeholder={`Option ${i + 1}`} value={opt}
-                  onChange={(e) => handleOptionChange(i, e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-green-400" />
-              ))}
-              <input type="text" placeholder="Correct Answer (exact match with one option)" value={form.correctAnswer}
-                onChange={(e) => setForm({ ...form, correctAnswer: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-green-400" />
-              <div className="flex gap-3 mb-4">
-                <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400">
-                  <option value="aptitude">Aptitude</option>
-                  <option value="dsa">DSA</option>
-                  <option value="technical">Technical</option>
-                  <option value="mern">MERN</option>
-                  <option value="reasoning">Reasoning</option>
-                </select>
-                <select value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
-                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-400">
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
+              {/* Papers List */}
+              <div className="bg-[#141f2e] border border-[#1e2a3a] rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#1e2a3a]">
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">Title</th>
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">Category</th>
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">Difficulty</th>
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">Qs</th>
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">Duration</th>
+                      <th className="text-left px-4 py-3 text-gray-400 font-semibold">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {papers.map((p) => (
+                      <tr key={p._id} className="border-b border-[#1e2a3a] hover:bg-[#1e2a3a] transition-colors">
+                        <td className="px-4 py-3 text-gray-200 font-medium">{p.title}</td>
+                        <td className="px-4 py-3"><span className="bg-[#1e2a3a] text-[#4a9eff] px-2 py-0.5 rounded text-xs uppercase">{p.category}</span></td>
+                        <td className="px-4 py-3"><span className="text-gray-300 text-xs uppercase">{p.difficulty}</span></td>
+                        <td className="px-4 py-3 text-gray-300">{p.questionCount}</td>
+                        <td className="px-4 py-3 text-gray-300">{p.duration} min</td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => handleDeletePaper(p._id)} className={btnDanger}>Delete 🗑</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {papers.length === 0 && (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">No papers yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-              <button onClick={handleAddQuestion} className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 font-semibold">
-                Add Question ➕
-              </button>
             </div>
+          )}
 
-            <h3 className="text-xl font-bold text-gray-800 mb-4">All Questions 📋 ({questions.length})</h3>
-            <div className="flex flex-col gap-4">
-              {questions.map((q) => (
-                <div key={q._id} className="bg-white rounded-2xl shadow-md p-5">
-                  <h4 className="font-semibold text-gray-800 mb-2">{q.question}</h4>
-                  <div className="flex gap-2 mb-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${categoryColors[q.category]}`}>{q.category.toUpperCase()}</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${difficultyColors[q.difficulty]}`}>{q.difficulty.toUpperCase()}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => navigate(`/edit-question/${q._id}`)} className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-semibold">Edit ✏️</button>
-                    <button onClick={() => handleDelete(q._id)} className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 font-semibold">Delete 🗑</button>
-                  </div>
+          {/* ── SETTINGS TAB ── */}
+          {activeTab === "Settings" && (
+            <div className="max-w-sm">
+              <div className="bg-[#141f2e] border border-[#1e2a3a] rounded-lg p-6 flex flex-col gap-4">
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Test Duration (seconds)</label>
+                  <input className={inputCls} type="number" value={settings.testDuration} onChange={(e) => setSettings({ ...settings, testDuration: Number(e.target.value) })} />
                 </div>
-              ))}
+                <div>
+                  <label className="text-gray-400 text-sm mb-1 block">Default Question Count</label>
+                  <input className={inputCls} type="number" value={settings.questionCount} onChange={(e) => setSettings({ ...settings, questionCount: Number(e.target.value) })} />
+                </div>
+                <button onClick={handleSaveSettings} className={btnPrimary}>Save Settings ⚙️</button>
+                {settingMsg && <p className="text-green-400 text-sm">{settingMsg}</p>}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
+        </div>
       </div>
     </div>
   );
