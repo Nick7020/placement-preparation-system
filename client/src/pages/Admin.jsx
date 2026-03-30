@@ -417,7 +417,7 @@ function Admin() {
             <div className="max-w-sm">
               <div className="bg-[#141f2e] border border-[#1e2a3a] rounded-lg p-6 flex flex-col gap-4">
                 <div>
-                  <label className="text-gray-400 text-sm mb-1 block">Test Duration (seconds)</label>
+                  <label className="text-gray-400 text-sm mb-1 block">Test Duration (minutes)</label>
                   <input className={inputCls} type="number" value={settings.testDuration} onChange={(e) => setSettings({ ...settings, testDuration: Number(e.target.value) })} />
                 </div>
                 <div>

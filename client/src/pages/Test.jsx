@@ -27,7 +27,7 @@ function Test() {
   const fetchSettings = async () => {
     try {
       const res = await axios.get("https://server-production-0086.up.railway.app/settings");
-      const duration = paperDuration || res.data.testDuration;
+      const duration = paperDuration || (res.data.testDuration * 60);
       const count = questionCount || res.data.questionCount;
       setTimeLeft(duration);
       setDuration(duration);
