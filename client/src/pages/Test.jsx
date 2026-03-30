@@ -15,6 +15,7 @@ function Test() {
   const [timeLeft, setTimeLeft] = useState(60);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const startedAt = useRef(new Date());
 
   useEffect(() => {
@@ -63,7 +64,8 @@ function Test() {
   }, [timeLeft, isSubmitted]);
 
   const submitTest = async () => {
-    if (isSubmitted) return;
+    if (isSubmitted || submitting) return;
+    setSubmitting(true);
     setIsSubmitted(true);
     try {
       const user = JSON.parse(localStorage.getItem("user"));
@@ -73,7 +75,11 @@ function Test() {
         startedAt: startedAt.current
       });
       navigate("/result", { state: { ...res.data, questions, answers } });
-    } catch (e) { console.log(e); }
+    } catch (e) {
+      console.log(e);
+      setSubmitting(false);
+      setIsSubmitted(false);
+    }
   };
 
   const handleAnswer = (questionId, selectedAnswer) => {
@@ -107,7 +113,7 @@ function Test() {
           </div>
           <span className="font-semibold tracking-wide">Placement Preparation System</span>
         </div>
-        <div className={`flex items-center gap-2 px-4 py-1.5 rounded font-bold text-sm ${isLow ? "bg-red-500 text-white" : "bg-white text-[#1a3c6e]"}`}>
+        <div className={`px-4 py-1.5 rounded font-bold text-sm ${isLow ? "bg-red-500 text-white" : "bg-white text-[#1a3c6e]"}`}>
           ⏱ {mins}:{secs}
         </div>
       </div>
@@ -192,7 +198,8 @@ function Test() {
               <div className="flex items-center gap-2"><div className="w-4 h-4 rounded border-2 border-gray-300"></div> Not Visited</div>
             </div>
 
-            <button onClick={() => setShowConfirm(true)}
+            <button
+              onClick={() => setShowConfirm(true)}
               className="mt-4 w-full px-4 py-2 bg-green-600 text-white rounded text-sm font-semibold hover:bg-green-700">
               Submit Test ✅
             </button>
@@ -205,16 +212,18 @@ function Test() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
             <h3 className="text-lg font-bold text-gray-800 mb-2">Submit Test?</h3>
-            <p className="text-gray-500 text-sm mb-1">Answered: <span className="font-semibold text-green-600">{answers.length}</span> / {questions.length}</p>
-            <p className="text-gray-500 text-sm mb-5">You cannot change answers after submission.</p>
+            <p className="text-gray-500 text-sm mb-5">Are you sure you want to submit?</p>
             <div className="flex gap-3">
-              <button onClick={() => setShowConfirm(false)}
+              <button
+                onClick={() => setShowConfirm(false)}
                 className="flex-1 border border-gray-300 text-gray-600 py-2 rounded font-semibold text-sm hover:bg-gray-50">
                 Cancel
               </button>
-              <button onClick={() => { setShowConfirm(false); submitTest(); }}
-                className="flex-1 bg-green-600 text-white py-2 rounded font-semibold text-sm hover:bg-green-700">
-                Yes, Submit ✅
+              <button
+                onClick={() => { setShowConfirm(false); submitTest(); }}
+                disabled={submitting}
+                className="flex-1 bg-green-600 text-white py-2 rounded font-semibold text-sm hover:bg-green-700 disabled:opacity-60">
+                {submitting ? "Submitting..." : "Yes, Submit ✅"}
               </button>
             </div>
           </div>
