@@ -241,15 +241,6 @@ app.post("/submit-test", async (req, res) => {
 
     const timeTaken = Math.floor((submittedAt - start) / 1000);
 
-    const settingData = await Setting.findOne();
-    const TEST_DURATION = settingData ? settingData.testDuration * 60 : 60 * 60;
-
-    if (timeTaken > TEST_DURATION) {
-      return res.status(400).json({
-        message: "Time Up ⏱️❌"
-      });
-    }
-
     let score = 0;
     let total = answers.length;
 
